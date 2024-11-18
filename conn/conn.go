@@ -13,6 +13,8 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
+
+	"github.com/borderzero/border0-go/lib/nacl"
 )
 
 const (
@@ -82,6 +84,37 @@ type Endpoint interface {
 	DstToBytes() []byte  // used for mac2 cookie calculations
 	DstIP() netip.Addr
 	SrcIP() netip.Addr
+}
+
+// KeyedEndpoint is an Endpoint implementation which is aware of the
+// remote peer/endpoint's public key. This is useful for logic in the
+// bind to determine if a given packet was sent from a peer from an
+// address other than the one in the state.
+//
+// This effectively enables changing the address of the peer in the
+// state such that we can maintain a QOS conn for the peer even if its
+// addresses change.
+//
+// The specific scenario that made us add this is that for peers behind
+// certain NAT gateways, the public UDP address assigned to outbound
+// traffic (on the gateway itself) is endpoint-dependent (can be thought
+// of as destination ip:port-dependent) such that the self-discovered
+// address (via STUN) is different (mostly only the port is different)
+// than the address that the remote peer sees on inbound traffic.
+type KeyedEndpoint struct {
+	Endpoint // embedded
+
+	key *nacl.PublicKey
+}
+
+// NewKeyedEndpoint returns a new KeyedEndpoint.
+func NewKeyedEndpoint(ep Endpoint, key *nacl.PublicKey) *KeyedEndpoint {
+	return &KeyedEndpoint{Endpoint: ep, key: key}
+}
+
+// GetPublicKey gets the public key for a KeyedEndpoint.
+func (kep *KeyedEndpoint) GetPublicKey() *nacl.PublicKey {
+	return kep.key
 }
 
 var (
