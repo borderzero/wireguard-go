@@ -19,7 +19,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 
@@ -43,10 +42,8 @@ import (
 type netTun struct {
 	ep             *channel.Endpoint
 	stack          *stack.Stack
-	notifyHandle   *channel.NotificationHandle
 	events         chan tun.Event
-	pktMu          sync.RWMutex
-	pktClosed      bool
+	notifyHandle   *channel.NotificationHandle
 	incomingPacket chan *buffer.View
 	mtu            int
 	dnsServers     []netip.Addr
@@ -166,28 +163,22 @@ func (tun *netTun) WriteNotify() {
 	view := pkt.ToView()
 	pkt.DecRef()
 
-	tun.pktMu.RLock()
-	if !tun.pktClosed {
-		tun.incomingPacket <- view
-	}
-	tun.pktMu.RUnlock()
+	tun.incomingPacket <- view
 }
 
 func (tun *netTun) Close() error {
 	tun.stack.RemoveNIC(1)
 	tun.stack.Close()
 	tun.ep.RemoveNotify(tun.notifyHandle)
+	tun.ep.Close()
 
 	if tun.events != nil {
 		close(tun.events)
 	}
 
-	tun.ep.Close()
-
-	tun.pktMu.Lock()
-	tun.pktClosed = true
-	close(tun.incomingPacket)
-	tun.pktMu.Unlock()
+	if tun.incomingPacket != nil {
+		close(tun.incomingPacket)
+	}
 
 	return nil
 }
