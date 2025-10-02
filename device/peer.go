@@ -12,7 +12,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/borderzero/border0-go/lib/nacl"
 	"github.com/borderzero/wireguard-go/conn"
 )
 
@@ -284,7 +283,7 @@ func (peer *Peer) SetEndpointFromPacket(endpoint conn.Endpoint) {
 		return
 	}
 	peer.endpoint.clearSrcOnTx = false
-	peer.endpoint.val = conn.NewKeyedEndpoint(endpoint, nacl.MustParsePublicKey(peer.handshake.remoteStatic[:]))
+	peer.endpoint.val = endpoint
 }
 
 func (peer *Peer) markEndpointSrcForClearing() {

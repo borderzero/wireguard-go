@@ -1,9 +1,8 @@
 module github.com/borderzero/wireguard-go
 
-go 1.23.8
+go 1.25
 
 require (
-	github.com/borderzero/border0-go v1.4.58
 	golang.org/x/crypto v0.37.0
 	golang.org/x/net v0.39.0
 	golang.org/x/sys v0.32.0

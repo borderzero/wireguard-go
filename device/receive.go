@@ -12,10 +12,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/borderzero/wireguard-go/conn"
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/net/ipv4"
 	"golang.org/x/net/ipv6"
-	"github.com/borderzero/wireguard-go/conn"
 )
 
 type QueueHandshakeElement struct {
@@ -459,6 +459,9 @@ func (peer *Peer) RoutineSequentialReceiver(maxBatchSize int) {
 				peer.SetEndpointFromPacket(elem.endpoint)
 				peer.timersHandshakeComplete()
 				peer.SendStagedPackets()
+			}
+			if ep, ok := elem.endpoint.(conn.KeyedEndpoint); ok {
+				ep.FromPeer(peer.handshake.remoteStatic)
 			}
 			rxBytesLen += uint64(len(elem.packet) + MinMessageSize)
 
