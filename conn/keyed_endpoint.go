@@ -2,6 +2,7 @@ package conn
 
 import (
 	"net/netip"
+	"sync"
 
 	"github.com/borderzero/border0-go/lib/nacl"
 )
@@ -22,13 +23,19 @@ import (
 // address (via STUN) is different (mostly only the port is different)
 // than the address that the remote peer sees on inbound traffic.
 type KeyedEndpoint struct {
-	inner Endpoint
-	key   *nacl.PublicKey
+	inner  Endpoint
+	raw    [nacl.KeyLength]byte
+	parsed *nacl.PublicKey
+	once   *sync.Once
 }
 
 // NewKeyedEndpoint returns a new KeyedEndpoint.
-func NewKeyedEndpoint(ep Endpoint, key *nacl.PublicKey) Endpoint {
-	return &KeyedEndpoint{inner: ep, key: key}
+func NewKeyedEndpoint(ep Endpoint, key [nacl.KeyLength]byte) Endpoint {
+	return &KeyedEndpoint{
+		inner: ep,
+		raw:   key,
+		once:  &sync.Once{},
+	}
 }
 
 // ClearSrc clears the source address.
@@ -53,4 +60,7 @@ func (rep *KeyedEndpoint) SrcIP() netip.Addr { return rep.inner.SrcIP() }
 func (rep *KeyedEndpoint) GetInner() Endpoint { return rep.inner }
 
 // GetPublicKey gets the public key for a RoamingEndpoint.
-func (rep *KeyedEndpoint) GetPublicKey() *nacl.PublicKey { return rep.key }
+func (rep *KeyedEndpoint) GetPublicKey() *nacl.PublicKey {
+	rep.once.Do(func() { rep.parsed = nacl.MustParsePublicKey(rep.raw[:]) })
+	return rep.parsed
+}
